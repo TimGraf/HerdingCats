@@ -19,15 +19,15 @@ object UserRepo {
 
   def isFriends(userId1: Long, userId2: Long)(implicit ec: ExecutionContext): XorT[Future, Error, Boolean] = {
     for {
-      user1 <- getUser(userId1)
-      user2 <- getUser(userId2)
-    } yield user1.id == userId2 && user2.id == userId1
+      user1FriendsIds <- getFriendsIds(userId1)
+      user2FriendsIds <- getFriendsIds(userId2)
+    } yield user1FriendsIds.contains(userId2) && user2FriendsIds.contains(userId1)
   }
 
-  def getUser(userId: Long)(implicit ec: ExecutionContext): XorT[Future, Error, User] = {
+  def getFriendsIds(userId: Long)(implicit ec: ExecutionContext): XorT[Future, Error, List[Long]] = {
     userMap.get(userId) match {
-      case Some(user) => XorT.right[Future, Error, User](Future.successful(user))
-      case None       => XorT.left[Future, Error, User](Future.successful(Error.UserNotFound(userId)))
+      case Some(user) => XorT.right[Future, Error, List[Long]](Future.successful(user.friends))
+      case None       => XorT.left[Future, Error, List[Long]](Future.successful(Error.UserNotFound(userId)))
     }
   }
 }
