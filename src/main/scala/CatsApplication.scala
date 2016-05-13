@@ -1,5 +1,7 @@
 import cats.std.all._
 import cats.data.Xor
+import xor.Good
+
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
@@ -24,4 +26,20 @@ object CatsApplication extends App {
   }
 
   Await.result(res.value, 1.second)
+
+
+
+  val res2 = for {
+    res1 <- UserRepo.isFriends1(0, 1)
+    res2 <- UserRepo.isFriends1(4, 5)
+    res3 <- UserRepo.isFriends1(4, 0)
+  } yield (res1, res2, res3)
+
+
+  res2.onComplete {
+    case Success((Good(b1), Good(b2), Good(b3))) => println(s"$b1 $b2 $b3"); println(b1 && b2 && b3)
+    case _ => println(false)
+  }
+
+  Await.result(res2, 1.second)
 }

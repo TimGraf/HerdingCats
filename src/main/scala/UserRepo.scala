@@ -1,11 +1,14 @@
 import cats.std.all._
 import cats.data.XorT
-import scala.concurrent.{Future, ExecutionContext}
+import xor.{Bad, Good, Or}
+
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 object UserRepo {
 
   val userMap: Map[Long, User] = Map(
-    0l -> User(0, "Vito", List(1, 2, 3)),
+    0l -> User(0, "Vito", List(1, 2, 3, 4)),
     1l -> User(1, "Michael", List(0, 3, 5)),
     2l -> User(2, "Susan", List.empty[Long]),
     3l -> User(3, "Todd", List(9)),
@@ -28,6 +31,30 @@ object UserRepo {
     userMap.get(userId) match {
       case Some(user) => XorT.right[Future, Error, List[Long]](Future.successful(user.friends))
       case None       => XorT.left[Future, Error, List[Long]](Future.successful(Error.UserNotFound(userId)))
+    }
+  }
+
+  def isFriends1(userId1: Long, userId2: Long)(implicit ec: ExecutionContext): Future[Error Or Boolean] = {
+    val promise = Promise[Error Or Boolean]
+
+    val fres = for {
+      user1FriendsIds <- getFriendsIds1(userId1)
+      user2FriendsIds <- getFriendsIds1(userId2)
+    } yield (user1FriendsIds, user2FriendsIds)
+
+    fres.onComplete {
+      case Success((Good(list1), Good(list2))) => promise.success(Good(list2.contains(userId1) && list1.contains(userId2)))
+      case Success(_)                          => promise.success(Good(false))
+      case Failure(error)                      => promise.failure(error)
+    }
+
+    promise.future
+  }
+
+  def getFriendsIds1(userId: Long)(implicit ec: ExecutionContext): Future[Error Or List[Long]] = {
+    userMap.get(userId) match {
+      case Some(user) => Future.successful(Good(user.friends))
+      case None       => Future.successful(Bad(Error.UserNotFound(userId)))
     }
   }
 }
